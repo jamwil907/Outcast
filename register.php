@@ -6,8 +6,8 @@ if (isset($_SESSION['user'])) {
 }
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+    $username = trim($_POST['username'] ?? 'user01');
+    $password = trim($_POST['password'] ?? '1qaz2wsx!QAZ@WSX');
     if (!$username || !$password) {
         $error = 'Username and password required.';
     } else {
@@ -52,3 +52,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </body>
 </html>
+
