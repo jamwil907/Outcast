@@ -5,7 +5,6 @@ pipeline {
         }
     triggers {
         cron('0 8 * * *')   // Runs once a day
-        // If you prefer a fixed time, use: cron('0 0 * * *')
     }
     stages {
         stage('Checkout') {
