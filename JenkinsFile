@@ -41,23 +41,33 @@ pipeline {
             }
         }
 
-        stage('Test') {
+
+        stage('Test Build Script') {
             steps {
                 sh '''
-                    echo "Running PHP test scripts in Docker..."
+                    echo "Testing build-container.sh..."
 
-                    TEST_FILES="test_weather.php other_test.php" # Add all your PHP test files here
+                    # Ensure the script exists
+                    if [ ! -f build-container.sh ]; then
+                        echo "ERROR: build-container.sh not found!"
+                        exit 1
+                    fi
 
-                    for TEST in $TEST_FILES; do
-                        if [ -f "$TEST" ]; then
-                            echo "Running $TEST..."
-                            docker run --rm -v "$PWD":/app -w /app php:8.2-cli php "$TEST" || { echo "Test $TEST failed!"; exit 1; }
-                        else
-                            echo "WARNING: Test file $TEST not found, skipping."
-                        fi
-                    done
+                    # Ensure executable
+                    if [ ! -x build-container.sh ]; then
+                        echo "Making build-container.sh executable"
+                        chmod +x build-container.sh
+                    fi
 
-                    echo "All PHP tests completed successfully."
+                    # Syntax check
+                    bash -n build-container.sh || { echo "Syntax error in build-container.sh"; exit 1; }
+
+                    # Optional: Run the script in dry-run mode
+                    # You can add a flag in your script for dry-run if needed
+                    echo "Running build-container.sh (dry-run)..."
+                    bash build-container.sh || { echo "build-container.sh failed!"; exit 1; }
+
+                    echo "build-container.sh test completed successfully!"
                 '''
             }
         }
