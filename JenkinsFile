@@ -48,13 +48,15 @@ stage('BAT Dependency Check') {
             }
         }
     }
-}
     post {
         success {
             echo "Pipeline completed successfully!"
         }
         failure {
-            echo "Pipeline failed. Check logs for errors."
+            echo "Pipeline failed. Check the logs for errors."
+        }
+        always {
+            echo "This will always run, regardless of success or failure."
         }
     }
-
+}
