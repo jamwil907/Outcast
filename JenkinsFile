@@ -43,6 +43,8 @@ stage('BAT Dependency Check') {
             steps {
                 echo 'Deliver....'
                 sh '''
+                docker compose up --build
+                docker run --rm -p 8181:8080 outcast
                 echo "package delivery.."
                 '''
             }
