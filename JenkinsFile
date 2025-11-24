@@ -57,4 +57,4 @@ stage('BAT Dependency Check') {
             echo "Pipeline failed. Check logs for errors."
         }
     }
-}
+
