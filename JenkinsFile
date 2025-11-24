@@ -41,8 +41,10 @@ stage('BAT Dependency Check') {
 }
         stage('Deliver') {
             steps {
-                echo 'Delivering build artifact by building Docker container...'
-                bat 'build.bat'  // build Outcast
+                echo 'Deliver....'
+                sh '''
+                    echo "package delivery.."
+                '''
             }
         }
     }
