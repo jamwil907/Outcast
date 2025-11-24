@@ -41,6 +41,22 @@ pipeline {
             }
         }
 
+        stage('Security Checks') {
+            steps {
+                echo "=== Security Checks Stage ==="
+                sh '''
+                    if command -v composer >/dev/null 2>&1; then
+                        if [ "$DRY_RUN" = "true" ]; then
+                            echo "[DRY-RUN] composer audit"
+                        else
+                            composer audit || true
+                        fi
+                    else
+                        echo "Composer not available, skipping security checks"
+                    fi
+                '''
+            }
+        }
 
         stage('Test Build Script') {
             steps {
