@@ -29,7 +29,7 @@ pipeline {
                             chmod +x build-container.sh
                         fi
 
-                        # Optional: check for syntax errors
+                        # Check for syntax errors
                         bash -n build-container.sh || { echo "Syntax error in build-container.sh"; exit 1; }
 
                         echo "Shell script dependency check passed."
@@ -78,8 +78,6 @@ pipeline {
                     # Syntax check
                     bash -n build-container.sh || { echo "Syntax error in build-container.sh"; exit 1; }
 
-                    # Optional: Run the script in dry-run mode
-                    # You can add a flag in your script for dry-run if needed
                     echo "Running build-container.sh (dry-run)..."
                     bash build-container.sh || { echo "build-container.sh failed!"; exit 1; }
 
@@ -105,7 +103,7 @@ pipeline {
             echo "Pipeline failed. Check the logs for errors."
         }
         always {
-            echo "This will always run, regardless of success or failure."
+            echo "Module 6 Enhancement tests."
         }
     }
 }
