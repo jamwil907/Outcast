@@ -50,12 +50,3 @@ stage('BAT Dependency Check') {
     }
 }
 
-    post {
-        success {
-            echo "Pipeline completed successfully!"
-        }
-        failure {
-            echo "Pipeline failed. Check logs for errors."
-        }
-    }
-}
