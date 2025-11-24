@@ -39,13 +39,10 @@ stage('BAT Dependency Check') {
         '''
     }
 }
-        stage('Deliver') {
-            steps {
-                echo 'Deliver....'
-                sh '''
-                    echo "package delivery.."
-                '''
-            }
-        }
+stage('Deliver') {
+    steps {
+        echo 'Running build checks and building Docker container...'
+        sh './build-container.sh'
+        sh 'docker build -t outcast-app:latest .'
     }
 }
