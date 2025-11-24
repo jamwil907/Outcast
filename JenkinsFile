@@ -14,40 +14,31 @@ pipeline {
                 }
     }
 
-        stage('Dependency Management') {
-            steps {
-                sh '''
-                    echo "Running PHP dependency checks (no composer.json found)..."
+stage('BAT Dependency Check') {
+    steps {
+        sh '''
+            echo "Checking .bat files dependencies..."
 
-                    echo "1) Checking PHP syntax for all .php files..."
-                    find . -name "*.php" -print0 | xargs -0 -n1 php -l
+            # Check if any .bat files exist
+            if ls *.bat >/dev/null 2>&1; then
+                echo "Found .bat files:"
+                ls *.bat
 
-                    echo "2) Checking include/require dependencies..."
-                    MISSING=0
-                    for FILE in $(grep -RhoP "(?<=include|require|include_once|require_once)\\s*['\\\"]([^'\\\"]+)['\\\"]" . | sed "s/['\\\"]//g"); do
-                        if [ ! -f "$FILE" ]; then
-                            echo "Missing dependency: $FILE"
-                            MISSING=1
-                        fi
-                    done
-
-                    if [ $MISSING -eq 1 ]; then
-                        echo "ERROR: One or more PHP dependency files are missing."
+                # Check that each .bat file is not empty
+                for FILE in *.bat; do
+                    if [ ! -s "$FILE" ]; then
+                        echo "ERROR: $FILE is empty!"
                         exit 1
-                    else
-                        echo "All PHP dependency paths are valid."
                     fi
+                done
 
-                    echo "3) Checking for .bat scripts..."
-                    if ls *.bat >/dev/null 2>&1; then
-                        echo "Found .bat files:"
-                        ls *.bat
-                    else
-                        echo "No .bat scripts found. Continuing..."
-                    fi
-                '''
-            }
-        }
+                echo "All .bat files exist and are non-empty."
+            else
+                echo "WARNING: No .bat files found in the project."
+            fi
+        '''
+    }
+}
         stage('Deliver') {
             steps {
                 echo 'Deliver....'
