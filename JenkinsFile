@@ -41,11 +41,14 @@ stage('BAT Dependency Check') {
 }
         stage('Deliver') {
             steps {
-                echo 'Running build script and building Docker container...'
-                
-                // Run the shell build script
+                echo 'Preparing build script and building Docker container...'
+
+                // Ensure build script is executable
+                sh 'chmod +x ./build-container.sh'
+
+                // Run the build script
                 sh './build-container.sh'
-                
+
                 // Build Docker container from current directory
                 sh 'docker build -t outcast-app:latest .'
             }
