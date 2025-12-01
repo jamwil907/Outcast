@@ -77,17 +77,11 @@ pipeline {
             }
         }
 
-        stage('Static Analysis (PHP Lint in Docker)') {
-            agent {
-                docker {
-                    image 'php:8.2-cli'
-                    args '-u root:root'
-                }
-            }
+        stage('Static Analysis (PHP Lint)') {
             steps {
                 script { startStage('Static Analysis') }
                 sh '''
-                    echo "Running PHP lint checks in Docker..."
+                    echo "Running PHP lint checks..."
 
                     if ls *.php >/dev/null 2>&1; then
                         for file in *.php; do
