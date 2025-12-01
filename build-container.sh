@@ -2,13 +2,7 @@
 set -e  # Exit on any error
 set -u  # Treat unset variables as error
 
-# Check if DRY_RUN is set
-DRY_RUN=${DRY_RUN:-true}
-
 echo "=== Running build-container.sh ==="
-if [ "$DRY_RUN" = "true" ]; then
-    echo ">>> Dry-run mode enabled. No Docker builds or changes will be executed."
-fi
 
 # Function to lint PHP files
 lint_php() {
@@ -17,21 +11,13 @@ lint_php() {
     if command -v php >/dev/null 2>&1; then
         echo "Using local PHP for linting..."
         for file in $(find . -name "*.php"); do
-            if [ "$DRY_RUN" = "true" ]; then
-                echo "[DRY-RUN] php -l $file"
-            else
-                php -l "$file"
-            fi
+            php -l "$file"
         done
 
     elif command -v docker >/dev/null 2>&1; then
         echo "Using Docker for PHP linting..."
         for file in $(find . -name "*.php"); do
-            if [ "$DRY_RUN" = "true" ]; then
-                echo "[DRY-RUN] docker run --rm -v $(pwd):/app php:8.2-cli php -l /app/$file"
-            else
-                docker run --rm -v "$(pwd)":/app php:8.2-cli php -l "/app/$file"
-            fi
+            docker run --rm -v "$(pwd)":/app php:8.2-cli php -l "/app/$file"
         done
 
     else
