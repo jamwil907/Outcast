@@ -3,6 +3,8 @@ pipeline {
 
     options {
         timeout(time: 60, unit: 'SECONDS')
+        buildDiscarder(logRotator(daysToKeepStr: '7', numToKeepStr: '10'))
+        timestamps()
     }
 
     triggers {
@@ -17,6 +19,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
+                cleanWs()
                 git 'https://github.com/jamwil907/JayErvin_M4Assgn1.git'
             }
         }
@@ -24,7 +27,7 @@ pipeline {
         stage('Monitoring Info') {
             steps {
                 echo "📊 Jenkins Monitoring Dashboard: ${MONITOR_URL}"
-                echo "System metrics, threads, garbage collection, and executor load available."
+                echo "Available: CPU load, GC activity, threads, deadlocks, executors, and HTTP metrics."
             }
         }
 
@@ -74,7 +77,13 @@ pipeline {
             }
         }
 
-        stage('Static Analysis (Linting)') {
+        stage('Static Analysis (Linting in Docker)') {
+            agent {
+                docker {
+                    image 'php:8.2-cli'
+                    args '-u root:root'
+                }
+            }
             steps {
                 script { startStage('Static Analysis') }
                 sh '''
@@ -124,7 +133,7 @@ pipeline {
             steps {
                 script { startStage('Deliver') }
                 sh '''
-                echo "package delivery.."
+                    echo "package delivery.."
                 '''
                 script { endStage('Deliver') }
             }
@@ -143,6 +152,12 @@ pipeline {
 
             // archive logs for monitoring plugin correlation
             archiveArtifacts artifacts: 'logs/**/*.log', allowEmptyArchive: true
+
+            // monitor build duration
+            echo "Total build duration: ${currentBuild.durationString}"
+
+            // capture system metrics snapshot
+            echo "System Metrics snapshot: ${MONITOR_URL}/metrics"
         }
     }
 }
