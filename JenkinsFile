@@ -1,34 +1,47 @@
 pipeline {
     agent any
-        options {
+
+    options {
         timeout(time: 60, unit: 'SECONDS')
-        }
+    }
+
     triggers {
         cron('0 8 * * *')   // Runs once a day
     }
+
+    environment {
+        MONITOR_URL = "${JENKINS_URL}monitoring"
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
-                git 'https://github.com/jamwil907/JayErvin_M4Assgn1.git' // gitlab repository that utilizes php
-                }
-    }
+                git 'https://github.com/jamwil907/JayErvin_M4Assgn1.git'
+            }
+        }
+
+        stage('Monitoring Info') {
+            steps {
+                echo "📊 Jenkins Monitoring Dashboard: ${MONITOR_URL}"
+                echo "System metrics, threads, garbage collection, and executor load available."
+            }
+        }
 
         stage('Shell Script Dependency Check') {
             steps {
+                script { startStage('Shell Script Dependency Check') }
                 sh '''
                     echo "Checking .sh file dependencies..."
 
-                    # Check if the shell script exists
                     if [ -f build-container.sh ]; then
                         echo "Found build-container.sh"
 
-                        # Ensure it is executable
                         if [ ! -x build-container.sh ]; then
                             echo "Making build-container.sh executable"
                             chmod +x build-container.sh
                         fi
 
-                        # Check for syntax errors
                         bash -n build-container.sh || { echo "Syntax error in build-container.sh"; exit 1; }
 
                         echo "Shell script dependency check passed."
@@ -37,13 +50,16 @@ pipeline {
                         exit 1
                     fi
                 '''
+                script { endStage('Shell Script Dependency Check') }
             }
         }
 
         stage('Security Checks') {
             steps {
-                echo "=== Security Checks Stage ==="
+                script { startStage('Security Checks') }
                 sh '''
+                    echo "=== Security Checks Stage ==="
+
                     if command -v composer >/dev/null 2>&1; then
                         if [ "$DRY_RUN" = "true" ]; then
                             echo "[DRY-RUN] composer audit"
@@ -54,27 +70,45 @@ pipeline {
                         echo "Composer not available, skipping security checks"
                     fi
                 '''
+                script { endStage('Security Checks') }
+            }
+        }
+
+        stage('Static Analysis (Linting)') {
+            steps {
+                script { startStage('Static Analysis') }
+                sh '''
+                    echo "Running PHP lint checks..."
+
+                    if ls *.php >/dev/null 2>&1; then
+                        for file in *.php; do
+                            echo "Linting $file"
+                            php -l "$file" || { echo "PHP syntax error in $file"; exit 1; }
+                        done
+                    else
+                        echo "No PHP files found to lint."
+                    fi
+                '''
+                script { endStage('Static Analysis') }
             }
         }
 
         stage('Test Build Script') {
             steps {
+                script { startStage('Test Build Script') }
                 sh '''
                     echo "Testing build-container.sh..."
 
-                    # Ensure the script exists
                     if [ ! -f build-container.sh ]; then
                         echo "ERROR: build-container.sh not found!"
                         exit 1
                     fi
 
-                    # Ensure executable
                     if [ ! -x build-container.sh ]; then
                         echo "Making build-container.sh executable"
                         chmod +x build-container.sh
                     fi
 
-                    # Syntax check
                     bash -n build-container.sh || { echo "Syntax error in build-container.sh"; exit 1; }
 
                     echo "Running build-container.sh (dry-run)..."
@@ -82,23 +116,21 @@ pipeline {
 
                     echo "build-container.sh test completed successfully!"
                 '''
+                script { endStage('Test Build Script') }
             }
         }
-        stage('Monitoring') {
-            steps {
-                sh '''
-                    echo "Monitoring available at: ${JENKINS_URL}monitoring"
-            }
-        }
+
         stage('Deliver') {
             steps {
-                echo 'Deliver....'
+                script { startStage('Deliver') }
                 sh '''
                 echo "package delivery.."
                 '''
+                script { endStage('Deliver') }
             }
         }
     }
+
     post {
         success {
             echo "Pipeline completed successfully!"
@@ -108,6 +140,25 @@ pipeline {
         }
         always {
             echo "Module 6 Enhancement tests."
+
+            // archive logs for monitoring plugin correlation
+            archiveArtifacts artifacts: 'logs/**/*.log', allowEmptyArchive: true
         }
     }
+}
+
+
+/*******************************************************
+  Shared timing functions for monitoring pipeline stages
+********************************************************/
+def stageStartTime = 0
+
+def startStage(name) {
+    stageStartTime = System.currentTimeMillis()
+    echo "⏱ Starting stage: ${name}"
+}
+
+def endStage(name) {
+    def elapsed = (System.currentTimeMillis() - stageStartTime) / 1000
+    echo "⏱ Stage '${name}' completed in ${elapsed} seconds"
 }
