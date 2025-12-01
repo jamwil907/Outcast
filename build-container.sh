@@ -1,46 +1,26 @@
-#!/bin/bash
-# build-container.sh
-# Purpose: Build & validate OutCast app, with Docker monitoring and PHP lint
+# Function to lint PHP files
+lint_php() {
+    echo "=== PHP Lint ==="
+    
+    if command -v php >/dev/null 2>&1; then
+        echo "Using local PHP for linting..."
+        for file in $(find . -name "*.php"); do
+            php -l "$file"
+        done
 
-# ---------------------------
-# Setup
-# ---------------------------
-MONITORING_DIR="./monitoring"
-mkdir -p "$MONITORING_DIR"
+    elif command -v docker >/dev/null 2>&1; then
+        echo "Using Docker for PHP linting..."
+        for file in $(find . -name "*.php"); do
+            docker run --rm -v "$(pwd)":/app php:8.2-cli php -l "/app/$file"
+        done
 
-# Unset DOCKER_HOST to use the local Docker socket
-unset DOCKER_HOST
+    else
+        echo "Error: PHP CLI or Docker is not available to lint PHP files!"
+        exit 1
+    fi
+}
 
-# ---------------------------
-# Docker Monitoring
-# ---------------------------
-if ! docker info >/dev/null 2>&1; then
-    echo "Docker is not running!" | tee -a "$MONITORING_DIR/build_metrics.txt"
-    echo "Exiting build."
-    exit 1
-else
-    echo "Docker is running properly." | tee -a "$MONITORING_DIR/build_metrics.txt"
-fi
+# Run PHP lint
+lint_php
 
-# ---------------------------
-# PHP Lint
-# ---------------------------
-echo "=== PHP Lint ==="
-if ! docker run --rm -v "$(pwd)":/app php:8.2-cli php -l /app/**/*.php; then
-    echo "PHP lint failed!" | tee -a "$MONITORING_DIR/build_metrics.txt"
-    exit 1
-else
-    echo "PHP lint passed." | tee -a "$MONITORING_DIR/build_metrics.txt"
-fi
-
-# ---------------------------
-# Other Build Steps (optional)
-# ---------------------------
-echo "Starting other build steps..."
-# e.g., docker build, unit tests, etc.
-# docker build -t outcast-app .
-
-# ---------------------------
-# Success
-# ---------------------------
-echo "Build completed successfully!" | tee -a "$MONITORING_DIR/build_metrics.txt"
+echo "=== build-container.sh finished successfully ==="
