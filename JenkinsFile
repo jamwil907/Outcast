@@ -7,43 +7,57 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
+        stage('Prepare Monitoring Directory') {
+            steps {
+                sh 'mkdir -p $MONITORING_DIR'
+                sh 'echo "Monitoring Started: $(date)" > $MONITORING_DIR/build_metrics.txt'
+            }
+        }
+
         stage('Build Container') {
             steps {
                 script {
-                    echo "=== Building Docker Container ==="
                     sh 'chmod +x build-container.sh'
-                    sh 'mkdir -p $MONITORING_DIR'
-                    sh 'echo "Build Container Stage Start: $(date)" >> $MONITORING_DIR/build_metrics.txt'
                     sh './build-container.sh'
-                    sh 'echo "Build Container Stage End: $(date)" >> $MONITORING_DIR/build_metrics.txt'
                 }
             }
         }
 
-        stage('PHP Lint') {
+        stage('PHP Lint (Docker-based)') {
             steps {
                 script {
-                    echo "=== Running PHP Lint ==="
-                    sh 'echo "PHP Lint Stage Start: $(date)" >> $MONITORING_DIR/build_metrics.txt'
-                    sh 'find . -name "*.php" -exec php -l {} \\;'
-                    sh 'echo "PHP Lint Stage End: $(date)" >> $MONITORING_DIR/build_metrics.txt'
+                    sh '''
+                    echo "Running PHP lint inside Docker..."
+                    for file in $(find . -name "*.php"); do
+                        echo "Linting $file"
+                        docker run --rm \
+                            -v $PWD:/app \
+                            -w /app \
+                            php:8.2-cli php -l "$file" || exit 1
+                    done
+                    '''
                 }
             }
         }
 
-        stage('Run Tests') {
+        stage('Run PHP Tests (Docker-based)') {
             steps {
                 script {
-                    echo "=== Running Tests ==="
-                    sh 'echo "Tests Stage Start: $(date)" >> $MONITORING_DIR/build_metrics.txt'
-                    sh 'php test_weather.php'
-                    sh 'echo "Tests Stage End: $(date)" >> $MONITORING_DIR/build_metrics.txt'
+                    sh '''
+                    echo "Running PHP tests inside Docker..."
+
+                    docker run --rm \
+                        -v $PWD:/app \
+                        -w /app \
+                        php:8.2-cli php test_weather.php
+                    '''
                 }
             }
         }
@@ -52,9 +66,9 @@ pipeline {
             steps {
                 script {
                     echo "=== Running Additional Monitoring Test ==="
+
                     sh 'echo "Monitoring Stage Start: $(date)" >> $MONITORING_DIR/build_metrics.txt'
 
-                    // Docker check
                     sh '''
                     if command -v docker >/dev/null 2>&1; then
                         if docker info >/dev/null 2>&1; then
@@ -63,63 +77,29 @@ pipeline {
                             echo "WARNING: Docker command found but daemon not accessible." >> $MONITORING_DIR/build_metrics.txt
                         fi
                     else
-                        echo "WARNING: Docker not installed." >> $MONITORING_DIR/build_metrics.txt
+                        echo "WARNING: Docker not installed on agent." >> $MONITORING_DIR/build_metrics.txt
                     fi
                     '''
-
-                    // PHP CLI check
-                    sh '''
-                    if command -v php >/dev/null 2>&1; then
-                        echo "PHP CLI is installed: $(php -v | head -n 1)" >> $MONITORING_DIR/build_metrics.txt
-                    else
-                        echo "WARNING: PHP CLI not installed." >> $MONITORING_DIR/build_metrics.txt
-                    fi
-                    '''
-
-                    // Disk usage
-                    sh 'echo "Disk Usage:" >> $MONITORING_DIR/build_metrics.txt'
-                    sh 'df -h >> $MONITORING_DIR/build_metrics.txt'
-
-                    // CPU and memory usage
-                    sh 'echo "CPU and Memory Usage:" >> $MONITORING_DIR/build_metrics.txt'
-                    sh 'top -b -n 1 | head -n 15 >> $MONITORING_DIR/build_metrics.txt'
-
-                    sh 'echo "Monitoring Stage End: $(date)" >> $MONITORING_DIR/build_metrics.txt'
                 }
             }
         }
     }
 
     post {
-        always {
-            // Archive monitoring logs
-            archiveArtifacts artifacts: "$MONITORING_DIR/**/*", allowEmptyArchive: true
-
-            // Send summary email
+        success {
             emailext(
                 to: "${EMAIL_RECIPIENT}",
-                subject: "COMPLETED: ${env.JOB_NAME} #${env.BUILD_NUMBER} — ${currentBuild.currentResult}",
-                body: """\
-Build Completed.
-Job: ${env.JOB_NAME}
-Build #: ${env.BUILD_NUMBER}
-Status: ${currentBuild.currentResult}
-URL: ${env.BUILD_URL}
-
-Stage timing and monitoring logs archived in $MONITORING_DIR.
-"""
+                subject: "Jenkins Job SUCCESS: ${env.JOB_NAME}",
+                body: "Good news! Your Jenkins pipeline completed successfully.\n\nBuild Number: ${env.BUILD_NUMBER}\nProject: ${env.JOB_NAME}"
             )
-
-            // Optional Slack notification
-            // slackSend(channel: '#ci-alerts', message: "Build ${env.JOB_NAME} #${env.BUILD_NUMBER} finished with status ${currentBuild.currentResult}")
-        }
-
-        success {
-            echo "Build succeeded! Metrics and logs archived."
         }
 
         failure {
-            echo "Build failed! Alerts sent."
+            emailext(
+                to: "${EMAIL_RECIPIENT}",
+                subject: "Jenkins Job FAILED: ${env.JOB_NAME}",
+                body: "Your Jenkins pipeline has FAILED.\n\nCheck console logs for details.\nBuild Number: ${env.BUILD_NUMBER}\nProject: ${env.JOB_NAME}"
+            )
         }
     }
 }
